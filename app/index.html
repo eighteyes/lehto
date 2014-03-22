@@ -6,7 +6,9 @@
   <script src="bower_components/angular/angular.js"></script>
   <script src="bower_components/jquery/dist/jquery.js"></script>
   <script src="bower_components/lodash/dist/lodash.js"></script>
-  <style>.col { width: 33%; float:left; }</style>
+  <style>.col { width: 33%; float:left; }
+  .highlight { background-color: #966;}
+  </style>
   <script>
     var app = angular.module("app", []);
 
@@ -22,23 +24,60 @@
       }
     });
 
-    app.controller('CountryList', function( $scope, CountryService ){
-      $scope.title = "Country List";
+    app.service('ArtistService', function($q, $http){
+      return {
+        getArtists: function(cc) {
+          var d = $q.defer();
+          $http.get('country/'+cc).then(function(data) {
+            d.resolve(data);
+          });
+          return d.promise;
+        },
+        getSimiliar: function(artist){
+          var d = $q.defer();
+          $http.get('similiar/'+artist).then(function(data) {
+            d.resolve(data);
+          });
+          return d.promise;
+        },
+        getShows: function(artist){
+          var d = $q.defer();
+          $http.get('shows/'+artist).then(function(data) {
+            d.resolve(data);
+          });
+          return d.promise;
+        }
+      }
+    })
+
+    app.controller('LehtoControl', function( $scope, CountryService, ArtistService ){
       CountryService.getCountries().then( function(data) {
         $scope.countries = _.sortBy(data.data, ['population'] ).reverse();
       });
+
+      $scope.findArtists = function(cc){
+        ArtistService.getArtists(cc).then( function(data) {
+        $scope.artists = data.data;
+      });
+
+      $scope.findEvents = function(artist){
+        ArtistService.getShows(artist).then( function(data){
+          $scope.shows = data.data;
+        })
+      }
+      }
     });
   </script>
 </head>
-<body>
-  <div ng-controller="CountryList" class="col">
-    {{ title }}
+<body ng-controller="LehtoControl">
+  <div class="col">
     <div ng-repeat="c in countries" ng-click="findArtists(c.cca2)">{{ c.name }}</div>
   </div>
-  <div ng-controller="ArtistList" class="col">
-    {{title}}
-    <div ng-repeat="a in artists" ng-click="findEvents(a);addSimiliar(a);highlight = true" ng-class>{{ a }}</div>
+  <div class="col">
+    <div ng-repeat="a in artists" ng-click="findEvents(a);addSimiliar(a);highlight = true" ng-class="{highlight: highlight}">{{ a }}</div>
   </div>
-  <div ng-controller="EventList" class="col"></div>
+  <div class="col">
+    <div ng-repeat="s in shows">{{s.city}}, {{s.country}}</div>
+  </div>
 </body>
 </html>
