@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en" ng-app="app">
+<head>
+  <meta charset="UTF-8">
+  <title>lehto</title>
+  <script src="bower_components/angular/angular.js"></script>
+  <script src="bower_components/jquery/dist/jquery.js"></script>
+  <script src="bower_components/lodash/dist/lodash.js"></script>
+  <style>.col { width: 33%; float:left; }</style>
+  <script>
+    var app = angular.module("app", []);
+
+    app.service('CountryService', function($q, $http){
+      return {
+        getCountries: function() {
+          var d = $q.defer();
+          $http.get('countries.json').then(function(data) {
+            d.resolve(data);
+          });
+          return d.promise;
+        }
+      }
+    });
+
+    app.controller('CountryList', function( $scope, CountryService ){
+      $scope.title = "Country List";
+      CountryService.getCountries().then( function(data) {
+        $scope.countries = _.sortBy(data.data, ['population'] ).reverse();
+      });
+    });
+  </script>
+</head>
+<body>
+  <div ng-controller="CountryList" class="col">
+    {{ title }}
+    <div ng-repeat="c in countries" ng-click="findArtists(c.cca2)">{{ c.name }}</div>
+  </div>
+  <div ng-controller="ArtistList" class="col">
+    {{title}}
+    <div ng-repeat="a in artists" ng-click="findEvents(a);addSimiliar(a);highlight = true" ng-class>{{ a }}</div>
+  </div>
+  <div ng-controller="EventList" class="col"></div>
+</body>
+</html>
