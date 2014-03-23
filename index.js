@@ -31,18 +31,6 @@ app.get('/shows/:artists', function(req, res) {
 
 app.listen(80);
 
-//are there arguments
-if (process.argv[2]) {
-  var cmd = process.argv[2];
-  if (cmd.indexOf('country') > -1) {
-    getArtists(cmd.substr(8).toUpperCase());
-  } else if (cmd.indexOf('artist') > -1) {
-    getSimiliar(cmd.substr(7));
-  } else if (cmd.indexOf('playing') > -1) {
-    getShows(cmd.substr(8));
-  }
-}
-
 function getArtists(countryCode, cb) {
   var artists = [];
   request.get('http://musicbrainz.org/ws/2/release/?limit=100&query=country:'
@@ -66,8 +54,9 @@ function getArtists(countryCode, cb) {
 
 function getSimiliar(artistName, cb) {
   var artists = [];
-  request.get('http://prod.v2.api.musicgraph.com/api/v2/artist/search?similar_to='
-   + artistName + '&limit=100&fields=id,name&api_key=3ec87654df736909612bd3efd45a23f8',
+  var url = encodeURI('http://prod.v2.api.musicgraph.com/api/v2/artist/search?similar_to='
+   + artistName + '&limit=100&fields=id,name&api_key=3ec87654df736909612bd3efd45a23f8');
+  request.get(url,
     function(error, resp, data) {
       data = JSON.parse(data);
       for (var i in data.data) {
@@ -80,17 +69,20 @@ function getSimiliar(artistName, cb) {
 
 function getShows(artistList, cb){
   var shows = [];
-  artistList = artistList.replace('||', '%7C%7C');
-  request.get('http://api.eventful.com/json/events/search?q=music&app_key=rwXzGxDHc5cLRtT2&keywords='
-   + artistList, function(err, resp, data) {
-    data = JSON.parse(data);
-    for (var i in data.events.event) {
-      var ev = data.events.event[i];
-      console.log(ev);
-      shows.push({
-        city: ev.city_name,
-        country: ev.country_name
-      });
+  var url = encodeURI('http://api.eventful.com/json/events/search?q=music&app_key=rwXzGxDHc5cLRtT2&keywords='
+   + artistList);
+  request.get(url, function(err, resp, data) {
+      data = JSON.parse(data);
+    if (typeof data !== 'undefined' && data.hasOwnProperty('events')) {
+      for (var i in data.events.event) {
+        var ev = data.events.event[i];
+        console.log(ev);
+        shows.push({
+          city: ev.city_name,
+          country: ev.country_name,
+          latlon: [ ev.latitude, ev.longitude ]
+        });
+      }
     }
     cb(shows);
   })

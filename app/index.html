@@ -6,10 +6,23 @@
   <script src="bower_components/angular/angular.js"></script>
   <script src="bower_components/jquery/dist/jquery.js"></script>
   <script src="bower_components/lodash/dist/lodash.js"></script>
+  <script src="js/leaflet/leaflet.js"></script>
+  <link rel="stylesheet" href="js/leaflet/leaflet.css"/>
   <style>.col { width: 33%; float:left; }
+  #map { height: 180px;}
   .highlight { background-color: #966;}
   </style>
   <script>
+    $(function(){
+
+     var map = L.map('map').setView([25.505, -80], 1);
+
+     L.tileLayer('http://{s}.tile.cloudmade.com/8ee2a50541944fb9bcedded5165f09d9/997/256/{z}/{x}/{y}.png', {
+    attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://cloudmade.com">CloudMade</a>',
+    maxZoom: 18
+    }).addTo(map);
+
+    })
     var app = angular.module("app", []);
 
     app.service('CountryService', function($q, $http){
@@ -77,6 +90,7 @@
     <div ng-repeat="a in artists" ng-click="findEvents(a);addSimiliar(a);highlight = true" ng-class="{highlight: highlight}">{{ a }}</div>
   </div>
   <div class="col">
+    <div ng-show='shows' id="map"></div>
     <div ng-repeat="s in shows">{{s.city}}, {{s.country}}</div>
   </div>
 </body>
