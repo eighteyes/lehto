@@ -63,7 +63,9 @@ function getSimiliar(artistName, cb) {
         var tArtist = data.data[i];
         artists.push(tArtist.name);
       }
+      console.log(artists);
       cb( _.uniq(artists));
+
     })
 }
 
@@ -73,15 +75,18 @@ function getShows(artistList, cb){
    + artistList);
   request.get(url, function(err, resp, data) {
       data = JSON.parse(data);
-    if (typeof data !== 'undefined' && data.hasOwnProperty('events')) {
+    if (typeof data !== 'undefined' && data.hasOwnProperty('events') && data.events !== null) {
       for (var i in data.events.event) {
         var ev = data.events.event[i];
-        console.log(ev);
-        shows.push({
-          city: ev.city_name,
-          country: ev.country_name,
-          latlon: [ ev.latitude, ev.longitude ]
-        });
+        //console.log(ev);
+        if ( ev !== null ){
+          shows.push({
+            city: ev.city_name,
+            country: ev.country_name,
+            latlon: [ ev.latitude, ev.longitude ],
+            date: ev.start_time.substr(0, 10)
+          });
+        }
       }
     }
     cb(shows);

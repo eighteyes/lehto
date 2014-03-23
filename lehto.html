@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<!-- saved from url=(0017)http://localhost/ -->
+<html lang="en" ng-app="app" class="ng-scope"><script type="text/javascript" src="chrome-extension://khbjahpecnkenngkidhioicnfpakihgo/iframe_raw.js"></script><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><style type="text/css">@charset "UTF-8";[ng\:cloak],[ng-cloak],[data-ng-cloak],[x-ng-cloak],.ng-cloak,.x-ng-cloak,.ng-hide{display:none !important;}ng\:form{display:block;}.ng-animate-block-transitions{transition:0s all!important;-webkit-transition:0s all!important;}</style>
+  <meta charset="UTF-8">
+  <title>lehto</title>
+  <script src="./lehto_files/angular.js"></script><style type="text/css"></style>
+  <script src="./lehto_files/jquery.js"></script>
+  <script src="./lehto_files/lodash.js"></script>
+  <script src="./lehto_files/leaflet.js"></script>
+  <link rel="stylesheet" href="http://localhost/js/leaflet/leaflet.css">
+  <style>
+  body { font-family: sans-serif; background-color: #222; color: #EEF;}
+  .col { width: 29%; margin: 0 2%; background-color:#334; float:left; }
+  .col div { padding: 5px 10px; transition: 250ms; overflow: hidden;}
+  .col div:hover {  background-color: rgba(100,100,100,0.5);}
+  #map { height: 180px;}
+  .highlight { background-color: #966;}
+  .title { text-align:center; font-size:1.2em; background-color: #669;}
+  </style>
+  <script>
+    var app = angular.module("app", []);
+
+    app.service('CountryService', function($q, $http){
+      return {
+        getCountries: function() {
+          var d = $q.defer();
+          $http.get('countries.json').then(function(data) {
+            d.resolve(data);
+          });
+          return d.promise;
+        }
+      }
+    });
+
+    app.service('ArtistService', function($q, $http){
+      return {
+        getArtists: function(cc) {
+          var d = $q.defer();
+          $http.get('country/'+cc).then(function(data) {
+            d.resolve(data);
+          });
+          return d.promise;
+        },
+        getSimiliar: function(artist){
+          var d = $q.defer();
+          $http.get('similiar/'+artist).then(function(data) {
+            d.resolve(data);
+          });
+          return d.promise;
+        },
+        getShows: function(artist){
+          var d = $q.defer();
+          $http.get('shows/'+artist).then(function(data) {
+            d.resolve(data);
+          });
+          return d.promise;
+        }
+      }
+    })
+
+    app.controller('LehtoControl', function( $scope, CountryService, ArtistService ){
+      CountryService.getCountries().then( function(data) {
+        $scope.countries = _.sortBy(data.data, ['population'] ).reverse();
+      });
+
+      $scope.findArtists = function(cc){
+        ArtistService.getArtists(cc).then( function(data) {
+        $scope.artists = data.data;
+        $scope.similiar = [];
+      });
+
+      $scope.findEvents = function(artist){
+
+        ArtistService.getShows(artist).then( function(data){
+          $scope.shows = data.data;
+        })
+      }
+
+      $scope.getSimiliar = function(artist){
+        $scope.artists = [artist];
+        ArtistService.getSimiliar(artist).then (function (data){
+          $scope.similiar = data.data;
+        })
+      }
+      }
+    });
+  </script>
+<script>(function bootstrap(window) {
+
+      var angular = window.angular;
+
+      // Helper to determine if the root 'ng' module has been loaded
+      // window.angular may be available if the app is bootstrapped asynchronously, but 'ng' might
+      // finish loading later.
+      var ngLoaded = function () {
+        if (!window.angular) {
+          return false;
+        }
+        try {
+          window.angular.module('ng');
+        }
+        catch (e) {
+          return false;
+        }
+        return true;
+      };
+
+      if (!ngLoaded()) {
+        (function () {
+          // TODO: var name
+          var areWeThereYet = function (ev) {
+            if (ev.srcElement.tagName === 'SCRIPT') {
+              var oldOnload = ev.srcElement.onload;
+              ev.srcElement.onload = function () {
+                if (ngLoaded()) {
+
+                  document.removeEventListener('DOMNodeInserted', areWeThereYet);
+                  bootstrap(window);
+                }
+                if (oldOnload) {
+                  oldOnload.apply(this, arguments);
+                }
+              };
+            }
+          };
+          document.addEventListener('DOMNodeInserted', areWeThereYet);
+        }());
+        return;
+      }
+
+      // do not patch twice
+      if (window.__ngDebug) {
+        return;
+      }
+
+      // Helpers
+      // =======
+
+      // polyfill for performance.now on older webkit
+      if (!performance.now) {
+        performance.now = performance.webkitNow;
+      }
+
+      // Based on cycle.js
+      // https://github.com/douglascrockford/JSON-js/blob/master/cycle.js
+
+      // Make a deep copy of an object or array, assuring that there is at most
+      // one instance of each object or array in the resulting structure. The
+      // duplicate references (which might be forming cycles) are replaced with
+      // an object of the form
+      //      {$ref: PATH}
+      // where the PATH is a JSONPath string that locates the first occurrence.
+      var decycle = function (object) {
+        var objects = [],   // Keep a reference to each unique object or array
+            paths = [];     // Keep the path to each unique object or array
+
+        return (function derez(value, path) {
+          var i,          // The loop counter
+              name,       // Property name
+              nu;         // The new object or array
+          switch (typeof value) {
+          case 'object':
+            if (value instanceof HTMLElement) {
+              return value.innerHTML.toString().trim();
+            }
+            if (!value) {
+              return null;
+            }
+            for (i = 0; i < objects.length; i += 1) {
+              if (objects[i] === value) {
+                return {$ref: paths[i]};
+              }
+            }
+            objects.push(value);
+            paths.push(path);
+            if (value instanceof Array) {
+              nu = [];
+              for (i = 0; i < value.length; i += 1) {
+                nu[i] = derez(value[i], path + '[' + i + ']');
+              }
+            } else {
+              nu = {};
+              for (name in value) {
+                if (name[0] !== '$' && Object.prototype.hasOwnProperty.call(value, name)) {
+                  nu[name] = derez(value[name],
+                    path + '[' + JSON.stringify(name) + ']');
+                }
+              }
+            }
+            return nu;
+          case 'number':
+          case 'string':
+          case 'boolean':
+            return value;
+          }
+        }(object, '$'));
+      };
+      // End
+      // ===
+
+      // given a scope object, return an object with deep clones
+      // of the models exposed on that scope
+      var getScopeLocals = function (scope) {
+        var scopeLocals = {}, prop;
+        for (prop in scope) {
+          if (scope.hasOwnProperty(prop) && prop !== 'this' && prop[0] !== '$') {
+            scopeLocals[prop] = decycle(scope[prop]);
+          }
+        }
+        return scopeLocals;
+      };
+
+      // helper to extract dependencies from function arguments
+      // not all versions of AngularJS expose annotate
+      var annotate = angular.injector().annotate;
+      if (!annotate) {
+        annotate = (function () {
+
+          var FN_ARGS = /^function\s*[^\(]*\(\s*([^\)]*)\)/m;
+          var FN_ARG_SPLIT = /,/;
+          var FN_ARG = /^\s*(_?)(.+?)\1\s*$/;
+          var STRIP_COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
+
+          // TODO: should I keep these assertions?
+          function assertArg(arg, name, reason) {
+            if (!arg) {
+              throw new Error("Argument '" + (name || '?') + "' is " + (reason || "required"));
+            }
+            return arg;
+          }
+          function assertArgFn(arg, name, acceptArrayAnnotation) {
+            if (acceptArrayAnnotation && angular.isArray(arg)) {
+              arg = arg[arg.length - 1];
+            }
+
+            assertArg(angular.isFunction(arg), name, 'not a function, got ' +
+                (arg && typeof arg == 'object' ? arg.constructor.name || 'Object' : typeof arg));
+            return arg;
+          }
+
+          return function (fn) {
+            var $inject,
+                fnText,
+                argDecl,
+                last;
+
+            if (typeof fn == 'function') {
+              if (!($inject = fn.$inject)) {
+                $inject = [];
+                fnText = fn.toString().replace(STRIP_COMMENTS, '');
+                argDecl = fnText.match(FN_ARGS);
+                argDecl[1].split(FN_ARG_SPLIT).forEach(function(arg) {
+                  arg.replace(FN_ARG, function(all, underscore, name) {
+                    $inject.push(name);
+                  });
+                });
+                fn.$inject = $inject;
+              }
+            } else if (angular.isArray(fn)) {
+              last = fn.length - 1;
+              assertArgFn(fn[last], 'fn');
+              $inject = fn.slice(0, last);
+            } else {
+              assertArgFn(fn, 'fn', true);
+            }
+            return $inject;
+          };
+        }());
+      }
+
+      // throttle based on _.throttle from Lo-Dash
+      // https://github.com/bestiejs/lodash/blob/master/lodash.js#L4625
+      var throttle = function (func, wait) {
+        var args,
+            result,
+            thisArg,
+            timeoutId,
+            lastCalled = 0;
+
+        function trailingCall() {
+          lastCalled = new Date();
+          timeoutId = null;
+          result = func.apply(thisArg, args);
+        }
+        return function() {
+          var now = new Date(),
+            remaining = wait - (now - lastCalled);
+
+          args = arguments;
+          thisArg = this;
+
+          if (remaining <= 0) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+            lastCalled = now;
+            result = func.apply(thisArg, args);
+          }
+          else if (!timeoutId) {
+            timeoutId = setTimeout(trailingCall, remaining);
+          }
+          return result;
+        };
+      };
+
+      var debounce = function (func, wait, immediate) {
+        var args,
+          result,
+          thisArg,
+          timeoutId;
+
+        function delayed() {
+          timeoutId = null;
+          if (!immediate) {
+            result = func.apply(thisArg, args);
+          }
+        }
+        return function() {
+          var isImmediate = immediate && !timeoutId;
+          args = arguments;
+          thisArg = this;
+
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(delayed, wait);
+
+          if (isImmediate) {
+            result = func.apply(thisArg, args);
+          }
+          return result;
+        };
+      };
+
+      var updateScopeModelCache = function (scope) {
+        debug.models[scope.$id] = getScopeLocals(scope);
+        debug.scopeDirty[scope.$id] = false;
+      };
+
+      var popover = null;
+
+      // Public API
+      // ==========
+
+      var api = window.__ngDebug = {
+
+        getDeps: function () {
+          return debug.deps;
+        },
+
+        getRootScopeIds: function () {
+          var ids = [];
+          angular.forEach(debug.rootScopes, function (elt, id) {
+            ids.push(id);
+          });
+          return ids;
+        },
+
+        // returns null or cached scope
+        getModel: function (id) {
+          if (debug.scopeDirty[id]) {
+            updateScopeModelCache(debug.scopes[id]);
+            return debug.models[id];
+          }
+        },
+
+        getScopeTree: function (id) {
+          if (debug.scopeTreeDirty[id] === false) {
+            return;
+          }
+          var traverse = function (sc) {
+            var tree = {
+              id: sc.$id,
+              children: []
+            };
+
+            var child = sc.$$childHead;
+            if (child) {
+              do {
+                tree.children.push(traverse(child));
+              } while (child !== sc.$$childTail && (child = child.$$nextSibling));
+            }
+
+            return tree;
+          };
+
+          var root = debug.rootScopes[id];
+          var tree = traverse(root);
+
+          if (tree) {
+            debug.scopeTreeDirty[id] = false;
+          }
+
+
+          return tree;
+        },
+
+        getWatchPerf: function () {
+          var changes = [];
+          angular.forEach(debug.watchPerf, function (info, name) {
+            if (info.time > 0) {
+              changes.push({
+                name: name,
+                time: info.time
+              });
+              info.time = 0;
+            }
+          });
+          return changes;
+        },
+
+        getWatchTree: function (id) {
+          var traverse = function (sc) {
+            var tree = {
+              id: sc.$id,
+              watchers: debug.watchers[sc.$id],
+              children: []
+            };
+
+            var child = sc.$$childHead;
+            if (child) {
+              do {
+                tree.children.push(traverse(child));
+              } while (child !== sc.$$childTail && (child = child.$$nextSibling));
+            }
+
+            return tree;
+          };
+
+          var root = debug.rootScopes[id];
+          var tree = traverse(root);
+
+          return tree;
+        },
+
+        enable: function () {
+          if (popover) {
+            return;
+          }
+          var angular = window.angular;
+          popover = angular.element(
+            '<div style="position: fixed; left: 50px; top: 50px; z-index: 9999; background-color: #f1f1f1; box-shadow: 0 15px 10px -10px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 40px rgba(0, 0, 0, 0.1) inset;">' +
+              '<div style="position: relative" style="min-width: 300px; min-height: 100px;">' +
+                '<div style="min-width: 100px; min-height: 50px; padding: 5px;"><pre>{ Please select a scope }</pre></div>' +
+                '<button style="position: absolute; top: -15px; left: -15px; cursor: move;">⇱</button>' +
+                '<button style="position: absolute; top: -15px; left: 10px;">+</button>' +
+                '<button style="position: absolute; top: -15px; right: -15px;">x</button>' +
+                '<style>' +
+                  '.ng-scope.bat-selected { border: 1px solid red; } ' +
+                  '.bat-indent { margin-left: 20px; }' +
+                '</style>' +
+              '</div>' +
+            '</div>');
+          angular.element(window.document.body).append(popover);
+          var popoverContent = angular.element(angular.element(popover.children('div')[0]).children()[0]);
+          var dragElt = angular.element(angular.element(popover.children('div')[0]).children()[1]);
+          var selectElt = angular.element(angular.element(popover.children('div')[0]).children()[2]);
+          var closeElt = angular.element(angular.element(popover.children('div')[0]).children()[3]);
+
+          var currentScope = null,
+            currentElt = null;
+
+          function onMove (ev) {
+            var x = ev.clientX,
+              y = ev.clientY;
+
+            if (x > window.outerWidth - 100) {
+              x = window.outerWidth - 100;
+            } else if (x < 0) {
+              x = 0;
+            }
+            if (y > window.outerHeight - 100) {
+              y = window.outerHeight - 100;
+            } else if (y < 0) {
+              y = 0;
+            }
+
+            x += 5;
+            y += 5;
+
+            popover.css('left', x + 'px');
+            popover.css('top', y + 'px');
+          }
+
+          closeElt.bind('click', function () {
+            popover.remove();
+            popover = null;
+          });
+
+          selectElt.bind('click', bindSelectScope);
+
+          var selecting = false;
+          function bindSelectScope () {
+            if (selecting) {
+              return;
+            }
+            setTimeout(function () {
+              selecting = true;
+              selectElt.attr('disabled', true);
+              angular.element(document.body).css('cursor', 'crosshair');
+              angular.element(document.getElementsByClassName('ng-scope'))
+                .bind('click', onSelectScope)
+                .bind('mouseover', onHoverScope);
+            }, 30);
+          }
+
+          var hoverScopeElt = null;
+
+          function markHoverElt () {
+            if (hoverScopeElt) {
+              hoverScopeElt.addClass('bat-selected');
+            }
+          }
+          function unmarkHoverElt () {
+            if (hoverScopeElt) {
+              hoverScopeElt.removeClass('bat-selected');
+            }
+          }
+
+          function onSelectScope (ev) {
+            render(this);
+            angular.element(document.getElementsByClassName('ng-scope'))
+              .unbind('click', onSelectScope)
+              .unbind('mouseover', onHoverScope);
+            unmarkHoverElt();
+            selecting = false;
+            selectElt.attr('disabled', false);
+            angular.element(document.body).css('cursor', '');
+            hovering = false;
+          }
+
+          var hovering = false;
+          function onHoverScope (ev) {
+            if (hovering) {
+              return;
+            }
+            hovering = true;
+            var that = this;
+            setTimeout(function () {
+              unmarkHoverElt();
+              hoverScopeElt = angular.element(that);
+              markHoverElt();
+              hovering = false;
+              render(that);
+            }, 100);
+          }
+
+          function onUnhoverScope (ev) {
+            angular.element(this).css('border', '');
+          }
+
+          dragElt.bind('mousedown', function (ev) {
+            ev.preventDefault();
+            rendering = true;
+            angular.element(document).bind('mousemove', onMove);
+          });
+          angular.element(document).bind('mouseup', function () {
+            angular.element(document).unbind('mousemove', onMove);
+            setTimeout(function () {
+              rendering = false;
+            }, 120);
+          });
+
+          function renderTree (data) {
+            var tree = angular.element('<div class="bat-indent"></div>');
+            angular.forEach(data, function (val, key) {
+              var toAppend;
+              if (val === undefined) {
+                toAppend = '<i>undefined</i>';
+              } else if (val === null) {
+                toAppend = '<i>null</i>';
+              } else if (val instanceof Array) {
+                toAppend = '[ ... ]';
+              } else if (val instanceof Object) {
+                toAppend = '{ ... }';
+              } else {
+                toAppend = val.toString();
+              }
+              if (data instanceof Array) {
+                toAppend = '<div>' +
+                  toAppend +
+                  ((key===data.length-1)?'':',') +
+                  '</div>';
+              } else {
+                toAppend = '<div>' +
+                  key +
+                  ': ' +
+                  toAppend +
+                  (key!==0?'':',') +
+                  '</div>';
+              }
+              toAppend = angular.element(toAppend);
+              if (val instanceof Array || val instanceof Object) {
+                function recur () {
+                  toAppend.unbind('click', recur);
+                  toAppend.html('');
+                  toAppend
+                    .append(angular.element('<span>' +
+                      key + ': ' +
+                      ((val instanceof Array)?'[':'{') +
+                      '<span>').bind('click', collapse))
+                    .append(renderTree(val))
+                    .append('<span>' + ((val instanceof Array)?']':'}') + '<span>');
+                }
+                function collapse () {
+                  toAppend.html('');
+                  toAppend.append(angular.element('<div>' +
+                    key +
+                    ': ' +
+                    ((val instanceof Array)?'[ ... ]':'{ ... }') +
+                    '</div>').bind('click', recur));
+                }
+                toAppend.bind('click', recur);
+              }
+              tree.append(toAppend);
+            });
+
+            return tree;
+          }
+
+          var isEmpty = function (object) {
+            var prop;
+            for (prop in object) {
+              if (object.hasOwnProperty(prop)) {
+                return false;
+              }
+            }
+            return true;
+          };
+
+          var objLength = function (object) {
+            var prop, len = 0;
+            for (prop in object) {
+              if (object.hasOwnProperty(prop)) {
+                len += 1;
+              }
+            }
+            return len;
+          };
+
+          var rendering = false;
+          var render = function (elt) {
+            if (rendering) {
+              return;
+            }
+            rendering = true;
+            setTimeout(function () {
+              var scope = angular.element(elt).scope();
+              rendering = false;
+              if (scope === currentScope) {
+                return;
+              }
+              currentScope = scope;
+              currentElt = elt;
+
+              var models = getScopeLocals(scope);
+              popoverContent.children().remove();
+              if (isEmpty(models)) {
+                popoverContent.append(angular.element('<i>This scope has no models</i>'));
+              } else {
+                popoverContent.append(renderTree(models));
+              }
+
+            }, 100);
+          };
+
+        }
+      };
+
+
+      // Private state
+      // =============
+
+      //var bootstrap = window.angular.bootstrap;
+      var debug = {
+        // map of scopes --> watcher function name strings
+        watchers: {},
+
+        // maps of watch/apply exp/fns to perf data
+        watchPerf: {},
+        applyPerf: {},
+
+        // map of scope.$ids --> $scope objects
+        scopes: {},
+        // map of scope.$ids --> model objects
+        models: {},
+        // map of $ids --> bools
+        scopeDirty: {},
+
+        // map of $ids --> refs to $rootScope objects
+        rootScopes: {},
+        scopeTreeDirty: {},
+
+        deps: []
+      };
+
+
+      // Instrumentation
+      // ===============
+
+      var ng = angular.module('ng');
+      ng.config(function ($provide) {
+        // methods to patch
+
+        // $provide.provider
+        var temp = $provide.provider;
+        $provide.provider = function (name, definition) {
+          if (!definition) {
+            angular.forEach(name, function (definition, name) {
+              var tempGet = definition.$get;
+              definition.$get = function () {
+                debug.deps.push({
+                  name: name,
+                  imports: annotate(tempGet)
+                });
+                return tempGet.apply(this, arguments);
+              };
+            });
+          } else if (definition instanceof Array) {
+            // it is a constructoctor with array syntax
+            var tempConstructor = definition[definition.length - 1];
+
+            definition[definition.length - 1] = function () {
+              debug.deps.push({
+                name: name,
+                imports: annotate(tempConstructor)
+              });
+              return tempConstructor.apply(this, arguments);
+            };
+          } else if (definition.$get instanceof Array) {
+            // it should have a $get
+            var tempGet = definition.$get[definition.$get.length - 1];
+
+            definition.$get[definition.$get.length - 1] = function () {
+              debug.deps.push({
+                name: name,
+                imports: annotate(tempGet)
+              });
+              return tempGet.apply(this, arguments);
+            };
+          } else if (typeof definition === 'object') {
+            // it should have a $get
+            var tempGet = definition.$get;
+
+            // preserve original annotations
+            definition.$get = annotate(definition.$get);
+            definition.$get.push(function () {
+              debug.deps.push({
+                name: name,
+                imports: annotate(tempGet)
+              });
+              return tempGet.apply(this, arguments);
+            });
+          } else {
+            debug.deps.push({
+              name: name,
+              imports: annotate(definition)
+            });
+          }
+          return temp.apply(this, arguments);
+        };
+
+        // $provide.(factory|service)
+        [
+          'factory',
+          'service'
+        ].forEach(function (met) {
+          var temp = $provide[met];
+          $provide[met] = function (name, definition) {
+            if (typeof name === 'object') {
+              angular.forEach(name, function (value, key) {
+                name[key] = function () {
+                  debug.deps.push({
+                    name: key,
+                    imports: annotate(value)
+                  });
+                  return value.apply(this, arguments);
+                };
+              });
+            } else {
+              debug.deps.push({
+                name: name,
+                imports: annotate(definition)
+              });
+            }
+            return temp.apply(this, arguments);
+          };
+        });
+
+        $provide.decorator('$rootScope', function ($delegate) {
+
+          var watchFnToHumanReadableString = function (fn) {
+            if (fn.exp) {
+              return fn.exp.trim();
+            } else if (fn.name) {
+              return fn.name.trim();
+            } else {
+              return fn.toString();
+            }
+          };
+
+          var applyFnToLogString = function (fn) {
+            var str;
+            if (fn) {
+              if (fn.name) {
+                str = fn.name;
+              } else if (fn.toString().split('\n').length > 1) {
+                str = 'fn () { ' + fn.toString().split('\n')[1].trim() + ' /* ... */ }';
+              } else {
+                str = fn.toString().trim().substr(0, 30) + '...';
+              }
+            } else {
+              str = '$apply';
+            }
+            return str;
+          };
+
+
+          // patch registering watchers
+          // ==========================
+
+          var _watch = $delegate.__proto__.$watch;
+          $delegate.__proto__.$watch = function (watchExpression, applyFunction) {
+            var thatScope = this;
+            var watchStr = watchFnToHumanReadableString(watchExpression);
+
+            if (!debug.watchPerf[watchStr]) {
+              debug.watchPerf[watchStr] = {
+                time: 0,
+                calls: 0
+              };
+            }
+            if (!debug.watchers[thatScope.$id]) {
+              debug.watchers[thatScope.$id] = [];
+            }
+            debug.watchers[thatScope.$id].push(watchStr);
+
+            // patch watchExpression
+            // ---------------------
+            var w = watchExpression;
+            if (typeof w === 'function') {
+              watchExpression = function () {
+                var start = performance.now();
+                var ret = w.apply(this, arguments);
+                var end = performance.now();
+                debug.watchPerf[watchStr].time += (end - start);
+                debug.watchPerf[watchStr].calls += 1;
+                return ret;
+              };
+            } else {
+              watchExpression = function () {
+                var start = performance.now();
+                var ret = thatScope.$eval(w);
+                var end = performance.now();
+                debug.watchPerf[watchStr].time += (end - start);
+                debug.watchPerf[watchStr].calls += 1;
+                return ret;
+              };
+            }
+
+            // patch applyFunction
+            // -------------------
+            if (typeof applyFunction === 'function') {
+              var applyStr = applyFunction.toString();
+              var unpatchedApplyFunction = applyFunction;
+              applyFunction = function () {
+                var start = performance.now();
+                var ret = unpatchedApplyFunction.apply(this, arguments);
+                var end = performance.now();
+                debug.scopeDirty[this.$id] = true;
+
+                //TODO: move these checks out of here and into registering the watcher
+                if (!debug.applyPerf[applyStr]) {
+                  debug.applyPerf[applyStr] = {
+                    time: 0,
+                    calls: 0
+                  };
+                }
+                debug.applyPerf[applyStr].time += (end - start);
+                debug.applyPerf[applyStr].calls += 1;
+                return ret;
+              };
+            }
+
+            return _watch.apply(this, arguments);
+          };
+
+
+          // patch $destroy
+          // --------------
+          var _destroy = $delegate.__proto__.$destroy;
+          $delegate.__proto__.$destroy = function () {
+            if (debug.watchers[this.$id]) {
+              delete debug.watchers[this.$id];
+            }
+            if (debug.models[this.$id]) {
+              delete debug.models[this.$id];
+            }
+            if (debug.scopes[this.$id]) {
+              delete debug.scopes[this.$id];
+            }
+            return _destroy.apply(this, arguments);
+          };
+
+
+          // patch $new
+          // ----------
+          var _new = $delegate.__proto__.$new;
+          $delegate.__proto__.$new = function () {
+
+            var ret = _new.apply(this, arguments);
+            if (ret.$root) {
+              debug.rootScopes[ret.$root.$id] = ret.$root;
+              debug.scopeTreeDirty[ret.$root.$id] = true;
+            }
+
+            // create empty watchers array for this scope
+            if (!debug.watchers[ret.$id]) {
+              debug.watchers[ret.$id] = [];
+            }
+
+            debug.scopes[ret.$id] = ret;
+            debug.scopes[this.$id] = this;
+            debug.scopeDirty[ret.$id] = true;
+
+            return ret;
+          };
+
+
+          // patch $digest
+          // -------------
+          var _digest = $delegate.__proto__.$digest;
+          $delegate.__proto__.$digest = function (fn) {
+            var ret = _digest.apply(this, arguments);
+            debug.scopeDirty[this.$id] = true;
+            return ret;
+          };
+
+
+          // patch $apply
+          // ------------
+          var _apply = $delegate.__proto__.$apply;
+          $delegate.__proto__.$apply = function (fn) {
+            var start = performance.now();
+            var ret = _apply.apply(this, arguments);
+            var end = performance.now();
+            debug.scopeDirty[this.$id] = true;
+
+            // If the debugging option is enabled, log to console
+            // --------------------------------------------------
+            if (debug.log) {
+              console.log(applyFnToLogString(fn) + '\t\t' + (end - start).toPrecision(4) + 'ms');
+            }
+
+            return ret;
+          };
+
+
+          return $delegate;
+        });
+      });
+    }(window))</script><link type="text/css" rel="stylesheet" href="chrome-extension://cpngackimfmofbokmjmljamhdncknpmg/style.css"><script type="text/javascript" charset="utf-8" src="chrome-extension://cpngackimfmofbokmjmljamhdncknpmg/js/page_context.js"></script><meta name="chromesniffer" id="chromesniffer_meta" content="{&quot;jQuery&quot;:&quot;2.1.0&quot;,&quot;Underscore.js&quot;:&quot;2.4.1&quot;,&quot;Angular&quot;:&quot;1.2.15&quot;}"><script type="text/javascript" src="chrome-extension://homgcnaoacgigpkkljjjekpignblkeae/detector.js"></script></head>
+<body ng-controller="LehtoControl" style="" class="ng-scope" screen_capture_injected="true">
+  <div class="col">
+    <!-- ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">China</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">India</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding highlight">United States</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Indonesia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Brazil</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Pakistan</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Nigeria</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Bangladesh</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Russia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Japan</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Mexico</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Philippines</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Vietnam</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Ethiopia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Egypt</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Germany</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Iran</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Turkey</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Democratic Republic of the Congo</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Thailand</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">France</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">United Kingdom</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Myanmar</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Italy</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">South Africa</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">South Korea</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Colombia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Spain</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Ukraine</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Tanzania</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Kenya</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Argentina</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Poland</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Sudan</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Algeria</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Iraq</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Uganda</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Canada</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Morocco</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Peru</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Uzbekistan</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Saudi Arabia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Malaysia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Venezuela</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Nepal</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Afghanistan</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">North Korea</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Ghana</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Yemen</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Mozambique</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Taiwan</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Australia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Ivory Coast</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Syria</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Madagascar</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Angola</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Cameroon</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Sri Lanka</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Romania</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Burkina Faso</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Niger</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Kazakhstan</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Netherlands</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Chile</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Malawi</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Ecuador</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Guatemala</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Mali</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Cambodia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Senegal</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Zambia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Zimbabwe</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Chad</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">South Sudan</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Belgium</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Cuba</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Tunisia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Guinea</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Greece</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Portugal</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Rwanda</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Czech Republic</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Somalia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Haiti</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Benin</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Burundi</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Bolivia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Hungary</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Sweden</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Belarus</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Dominican Republic</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Azerbaijan</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Honduras</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Austria</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Israel</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Switzerland</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Tajikistan</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Bulgaria</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Hong Kong</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Serbia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Papua New Guinea</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Paraguay</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Laos</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Jordan</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Ireland</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">El Salvador</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Eritrea</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Libya</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Togo</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Sierra Leone</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Nicaragua</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Denmark</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Kyrgyzstan</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">United Arab Emirates</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Finland</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Slovakia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Singapore</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Turkmenistan</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Norway</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Georgia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Lebanon</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Costa Rica</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Central African Republic</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Palestine</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">New Zealand</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Republic of the Congo</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Liberia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Croatia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Oman</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Bosnia and Herzegovina</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Puerto Rico</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Kuwait</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Moldova</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Mauritania</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Panama</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Uruguay</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Armenia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Lithuania</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Albania</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Mongolia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Jamaica</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Namibia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Lesotho</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Slovenia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Macedonia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Botswana</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Qatar</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Latvia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Gambia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Republic of Kosovo</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Guinea-Bissau</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Gabon</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Equatorial Guinea</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Trinidad and Tobago</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Estonia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Mauritius</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Swaziland</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Bahrain</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Timor-Leste</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Cyprus</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Djibouti</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Fiji</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Réunion</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Guyana</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Bhutan</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Comoros</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Montenegro</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Macau</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Western Sahara</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Solomon Islands</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Luxembourg</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Suriname</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Cape Verde</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Malta</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Guadeloupe</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Martinique</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Brunei</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Iceland</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Bahamas</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Maldives</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Belize</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Barbados</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">French Polynesia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Vanuatu</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">New Caledonia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">French Guiana</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Mayotte</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Samoa</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">São Tomé and Príncipe</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Saint Lucia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Guam</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Curaçao</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Saint Vincent and the Grenadines</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Kiribati</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">United States Virgin Islands</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Micronesia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Grenada</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Tonga</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Aruba</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Jersey</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Seychelles</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Antigua and Barbuda</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Isle of Man</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Saint Martin</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Andorra</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Dominica</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Bermuda</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Guernsey</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Greenland</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Marshall Islands</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">American Samoa</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Cayman Islands</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Saint Kitts and Nevis</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Northern Mariana Islands</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Faroe Islands</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Sint Maarten</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Liechtenstein</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Monaco</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">San Marino</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Turks and Caicos Islands</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Gibraltar</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">British Virgin Islands</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Åland Islands</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Palau</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Bonaire</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Cook Islands</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Anguilla</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Wallis and Futuna</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Tuvalu</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Nauru</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Saint Barthélemy</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Saint Pierre and Miquelon</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Montserrat</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Saint Helena</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">British Indian Ocean Territory</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Svalbard and Jan Mayen</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Falkland Islands</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Norfolk Island</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Christmas Island</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Niue</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Tokelau</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Ascension Island</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Vatican City</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Cocos (Keeling) Islands</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">United States Minor Outlying Islands</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">French Southern and Antarctic Lands</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Pitcairn Islands</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">South Georgia</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Heard Island and McDonald Islands</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Bouvet Island</div><!-- end ngRepeat: c in countries --><div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Antarctica</div><!-- end ngRepeat: c in countries -->
+  </div>
+  <div class="col">
+    <!-- ngRepeat: a in artists --><div ng-repeat="a in artists" ng-click="findEvents(a);getSimiliar(a);highlight = true" ng-class="{highlight: highlight}" class="ng-scope ng-binding highlight">Avenger</div><!-- end ngRepeat: a in artists -->
+    <div ng-show="similiar" class="">
+      <div class="title">Similiar Artists</div>
+      <!-- ngRepeat: a in similiar --><div ng-repeat="a in similiar" ng-click="findEvents(a);highlight = true" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Wrathchild</div><!-- end ngRepeat: a in similiar --><div ng-repeat="a in similiar" ng-click="findEvents(a);highlight = true" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Cloven Hoof</div><!-- end ngRepeat: a in similiar --><div ng-repeat="a in similiar" ng-click="findEvents(a);highlight = true" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Seven Witches</div><!-- end ngRepeat: a in similiar --><div ng-repeat="a in similiar" ng-click="findEvents(a);highlight = true" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Alien</div><!-- end ngRepeat: a in similiar --><div ng-repeat="a in similiar" ng-click="findEvents(a);highlight = true" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Roxxcalibur</div><!-- end ngRepeat: a in similiar --><div ng-repeat="a in similiar" ng-click="findEvents(a);highlight = true" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Crucifixion</div><!-- end ngRepeat: a in similiar --><div ng-repeat="a in similiar" ng-click="findEvents(a);highlight = true" ng-class="{highlight: highlight}" class="ng-scope ng-binding">Accept</div><!-- end ngRepeat: a in similiar -->
+    </div>
+  </div>
+  <div class="col">
+    <!-- ngRepeat: s in shows --><div ng-repeat="s in shows" class="ng-scope ng-binding">Newcastle upon Tyne, United Kingdom <span style="float:right;font-size:0.8em;color:#666" class="ng-binding">2014-05-24</span></div><!-- end ngRepeat: s in shows --><div ng-repeat="s in shows" class="ng-scope ng-binding">Edinburgh, United Kingdom <span style="float:right;font-size:0.8em;color:#666" class="ng-binding">2014-05-23</span></div><!-- end ngRepeat: s in shows --><div ng-repeat="s in shows" class="ng-scope ng-binding">Düsseldorf, Germany <span style="float:right;font-size:0.8em;color:#666" class="ng-binding">2014-04-20</span></div><!-- end ngRepeat: s in shows --><div ng-repeat="s in shows" class="ng-scope ng-binding">Stavanger, Norway <span style="float:right;font-size:0.8em;color:#666" class="ng-binding">2014-06-25</span></div><!-- end ngRepeat: s in shows --><div ng-repeat="s in shows" class="ng-scope ng-binding">Prince George, Canada <span style="float:right;font-size:0.8em;color:#666" class="ng-binding">2014-04-13</span></div><!-- end ngRepeat: s in shows --><div ng-repeat="s in shows" class="ng-scope ng-binding">Gothenburg, Sweden <span style="float:right;font-size:0.8em;color:#666" class="ng-binding">2014-06-24</span></div><!-- end ngRepeat: s in shows --><div ng-repeat="s in shows" class="ng-scope ng-binding">Quebec, Canada <span style="float:right;font-size:0.8em;color:#666" class="ng-binding">2014-05-12</span></div><!-- end ngRepeat: s in shows --><div ng-repeat="s in shows" class="ng-scope ng-binding">Minneapolis, United States <span style="float:right;font-size:0.8em;color:#666" class="ng-binding">2014-04-21</span></div><!-- end ngRepeat: s in shows --><div ng-repeat="s in shows" class="ng-scope ng-binding">Rome, Italy <span style="float:right;font-size:0.8em;color:#666" class="ng-binding">2014-06-19</span></div><!-- end ngRepeat: s in shows --><div ng-repeat="s in shows" class="ng-scope ng-binding">Tampa, United States <span style="float:right;font-size:0.8em;color:#666" class="ng-binding">2014-04-25</span></div><!-- end ngRepeat: s in shows -->
+  </div>
+
+
+<div id="window-resizer-tooltip" style="display: block;"><a href="http://localhost/#" title="Edit settings" style="background-image: url(chrome-extension://kkelicaakdanhinjdeammmilcgefonfh/images/icon_19.png);"></a><span class="tooltipTitle">Window size: </span><span class="tooltipWidth" id="winWidth">1025</span> x <span class="tooltipHeight" id="winHeight">1024</span><br><span class="tooltipTitle">Viewport size: </span><span class="tooltipWidth" id="vpWidth">1025</span> x <span class="tooltipHeight" id="vpHeight">885</span></div></body></html>

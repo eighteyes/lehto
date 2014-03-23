@@ -8,21 +8,16 @@
   <script src="bower_components/lodash/dist/lodash.js"></script>
   <script src="js/leaflet/leaflet.js"></script>
   <link rel="stylesheet" href="js/leaflet/leaflet.css"/>
-  <style>.col { width: 33%; float:left; }
+  <style>
+  body { font-family: sans-serif; background-color: #222; color: #EEF;}
+  .col { width: 29%; margin: 0 2%; background-color:#334; float:left; }
+  .col div { padding: 5px 10px; transition: 250ms; overflow: hidden;}
+  .col div:hover {  background-color: rgba(100,100,100,0.5);}
   #map { height: 180px;}
   .highlight { background-color: #966;}
+  .title { text-align:center; font-size:1.2em; background-color: #669;}
   </style>
   <script>
-    $(function(){
-
-     var map = L.map('map').setView([25.505, -80], 1);
-
-     L.tileLayer('http://{s}.tile.cloudmade.com/8ee2a50541944fb9bcedded5165f09d9/997/256/{z}/{x}/{y}.png', {
-    attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://cloudmade.com">CloudMade</a>',
-    maxZoom: 18
-    }).addTo(map);
-
-    })
     var app = angular.module("app", []);
 
     app.service('CountryService', function($q, $http){
@@ -71,11 +66,20 @@
       $scope.findArtists = function(cc){
         ArtistService.getArtists(cc).then( function(data) {
         $scope.artists = data.data;
+        $scope.similiar = [];
       });
 
       $scope.findEvents = function(artist){
+
         ArtistService.getShows(artist).then( function(data){
           $scope.shows = data.data;
+        })
+      }
+
+      $scope.getSimiliar = function(artist){
+        $scope.artists = [artist];
+        ArtistService.getSimiliar(artist).then (function (data){
+          $scope.similiar = data.data;
         })
       }
       }
@@ -84,14 +88,17 @@
 </head>
 <body ng-controller="LehtoControl">
   <div class="col">
-    <div ng-repeat="c in countries" ng-click="findArtists(c.cca2)">{{ c.name }}</div>
+    <div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}">{{ c.name }}</div>
   </div>
   <div class="col">
-    <div ng-repeat="a in artists" ng-click="findEvents(a);addSimiliar(a);highlight = true" ng-class="{highlight: highlight}">{{ a }}</div>
+    <div ng-repeat="a in artists" ng-click="findEvents(a);getSimiliar(a);highlight = true" ng-class="{highlight: highlight}">{{ a }}</div>
+    <div ng-show="similiar">
+      <div class="title">Similiar Artists</div>
+      <div ng-repeat="a in similiar" ng-click="findEvents(a);highlight = true" ng-class="{highlight: highlight}">{{ a }}</div>
+    </div>
   </div>
   <div class="col">
-    <div ng-show='shows' id="map"></div>
-    <div ng-repeat="s in shows">{{s.city}}, {{s.country}}</div>
+    <div ng-repeat="s in shows">{{s.city}}, {{s.country}} <span style="float:right;font-size:0.8em;color:#666">{{s.date}}</span></div>
   </div>
 </body>
 </html>
