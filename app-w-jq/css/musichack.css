@@ -1,0 +1,21 @@
+@charset "utf-8";
+/* CSS Document */
+
+.ui-listview-filter-inset {
+	margin-top: 0;
+}
+.ui-btn-text {
+	white-space: normal;
+}
+.ui-li-desc {
+	white-space: normal;
+}
+.ui-page { 
+	background: #333;
+}
+.col {
+	 width: 33%; float:left;
+}
+.highlight {
+	 background-color: #966;
+}

@@ -1,13 +1,5 @@
-<!doctype html>
-<html lang="en" ng-app="app">
-<head>
-  <meta charset="UTF-8">
-  <title>lehto</title>
-  
-  <style>.col { width: 33%; float:left; }
-  .highlight { background-color: #966;}
-  </style>
-  <script>
+// JavaScript Document
+
     var app = angular.module("app", []);
 
     app.service('CountryService', function($q, $http){
@@ -65,20 +57,25 @@
       }
       }
     });
-  </script>
-</head>
-<body ng-controller="LehtoControl">
-  <div class="col">
-    <div ng-repeat="c in countries" ng-click="findArtists(c.cca2)">{{ c.name }}</div>
-  </div>
-  <div class="col">
-    <div ng-repeat="a in artists" ng-click="findEvents(a);addSimiliar(a);highlight = true" ng-class="{highlight: highlight}">{{ a }}</div>
-  </div>
-  <div class="col">
-    <div ng-repeat="s in shows">{{s.city}}, {{s.country}}</div>
-  </div>
-  <script src="bower_components/angular/angular.js"></script>
-  <script src="bower_components/jquery/dist/jquery.js"></script>
-  <script src="bower_components/lodash/dist/lodash.js"></script>
-</body>
-</html>
+	myapp.directive('autoComplete', function(autoCompleteDataService) {
+    return {
+        restrict: 'A',
+        link: function(scope, elem, attr, ctrl) {
+            elem.autocomplete({
+                source: autoCompleteDataService.getSource(), //from your service
+                select: function( event, ui ) {
+                    scope.foo= ui.item.label;
+                    scope.$apply();
+                },
+                change:function (event, ui) {
+                    if (ui.item === null) {
+                        scope.foo = null;
+                    }
+                },
+                minLength: 2
+            });
+        }
+    };
+});
+
+   
