@@ -74,12 +74,12 @@ function getShows(artistList, cb){
   var url = encodeURI('http://api.eventful.com/json/events/search?q=music&app_key=rwXzGxDHc5cLRtT2&keywords='
    + artistList);
   request.get(url, function(err, resp, data) {
-      data = JSON.parse(data);
+    data = JSON.parse(data);
     if (typeof data !== 'undefined' && data.hasOwnProperty('events') && data.events !== null) {
       for (var i in data.events.event) {
         var ev = data.events.event[i];
-        //console.log(ev);
-        if ( ev !== null ){
+        console.log(ev);
+        if ( typeof ev !== 'undefined' && ev !== null ){
           shows.push({
             city: ev.city_name,
             country: ev.country_name,

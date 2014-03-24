@@ -8,14 +8,32 @@
   <script src="bower_components/lodash/dist/lodash.js"></script>
   <script src="js/leaflet/leaflet.js"></script>
   <link rel="stylesheet" href="js/leaflet/leaflet.css"/>
+  <link href='http://fonts.googleapis.com/css?family=Lato:900' rel='stylesheet' type='text/css'>
   <style>
-  body { font-family: sans-serif; background-color: #222; color: #EEF;}
-  .col { width: 29%; margin: 0 2%; background-color:#334; float:left; }
-  .col div { padding: 5px 10px; transition: 250ms; overflow: hidden;}
+  body { margin: 0;font-family: 'Lato', sans-serif; background-color: #222; color: #EEF;}
+  .col { border-radius:5px; width: 29%; margin: 10px 2%; background-color:#334; float:left; }
+  .col div { border-radius: 5px; padding: 5px 10px; transition: 250ms; overflow: hidden;}
   .col div:hover {  background-color: rgba(100,100,100,0.5);}
   #map { height: 180px;}
   .highlight { background-color: #966;}
   .title { text-align:center; font-size:1.2em; background-color: #669;}
+  nav h1 {text-shadow: 2px 1px 1px black;
+text-rendering: optimizeLegibility;
+letter-spacing: -0.05em;
+font-size: 1.8em;
+line-height: 10px;}
+  nav h1, nav h4 {
+    display: inline-block;margin-left:10px;
+  }
+  nav {
+    padding:5px;
+    height: 50px;
+    width: 100%;
+    background-color: #339;
+  }
+  .country-sort {
+    width: 100%; background-color: #333; box-sizing: border-box; border: 1px solid #666; border-radius: 5px 5px 0 0; font-size: 1.4em; color: #999; margin: 0 0 10px;
+  }
   </style>
   <script>
     var app = angular.module("app", []);
@@ -61,16 +79,18 @@
     app.controller('LehtoControl', function( $scope, CountryService, ArtistService ){
       CountryService.getCountries().then( function(data) {
         $scope.countries = _.sortBy(data.data, ['population'] ).reverse();
+        $scope.origCountries = $scope.countries;
       });
 
       $scope.findArtists = function(cc){
         ArtistService.getArtists(cc).then( function(data) {
-        $scope.artists = data.data;
-        $scope.similiar = [];
-      });
+          $scope.artists = data.data;
+          $scope.similiar = [];
+          $scope.origArtists = data.data;
+        });
+      }
 
       $scope.findEvents = function(artist){
-
         ArtistService.getShows(artist).then( function(data){
           $scope.shows = data.data;
         })
@@ -82,15 +102,39 @@
           $scope.similiar = data.data;
         })
       }
+
+      $scope.sortCountries = function(){
+        if ($scope.countryValue.toString().length > 0){
+          $scope.countries = _.filter( $scope.origCountries, function(c){
+            return (c.name.indexOf( $scope.countryValue.toString() ) > -1)
+          });
+        } else {
+          $scope.countries = $scope.origCountries;
+        }
+      }
+      $scope.sortArtists = function(){
+        if ($scope.artistValue.length > 0){
+          $scope.artists = _.filter( $scope.origArtists, function(c){
+            return (c.name.indexOf( $scope.artistValue ) > -1)
+          });
+        } else {
+          $scope.artists = $scope.origArtists;
+        }
       }
     });
   </script>
 </head>
 <body ng-controller="LehtoControl">
+  <nav>
+    <h1>Lehto</h1>
+    <h4>Regional musical artist event discoverizer</h4>
+  </nav>
   <div class="col">
+    <input class="country-sort" ng-model="countryValue" ng-change="sortCountries()" placeholder="Search...">
     <div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}">{{ c.name }}</div>
   </div>
   <div class="col">
+    <input class="country-sort" ng-model="artistValue" ng-change="sortArtists()" placeholder="Search...">
     <div ng-repeat="a in artists" ng-click="findEvents(a);getSimiliar(a);highlight = true" ng-class="{highlight: highlight}">{{ a }}</div>
     <div ng-show="similiar">
       <div class="title">Similiar Artists</div>
@@ -98,7 +142,10 @@
     </div>
   </div>
   <div class="col">
-    <div ng-repeat="s in shows">{{s.city}}, {{s.country}} <span style="float:right;font-size:0.8em;color:#666">{{s.date}}</span></div>
+    <div ng-repeat="s in shows">
+      {{s.city}}, {{s.country}}
+      <span style="float:right;font-size:0.8em;color:#666">{{s.date}}</span>
+    </div>
   </div>
 </body>
 </html>
