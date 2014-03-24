@@ -14,6 +14,8 @@
   .col { border-radius:5px; width: 29%; margin: 10px 2%; background-color:#334; float:left; }
   .col div { border-radius: 5px; padding: 5px 10px; transition: 250ms; overflow: hidden;}
   .col div:hover {  background-color: rgba(100,100,100,0.5);}
+  .col { transition: 1000ms; opacity:1; }
+  .ng-hide { opacity:0;}
   #map { height: 180px;}
   .highlight { background-color: #966;}
   .title { text-align:center; font-size:1.2em; background-color: #669;}
@@ -31,8 +33,32 @@ line-height: 10px;}
     width: 100%;
     background-color: #339;
   }
+  h3, h5 {
+    text-align: center;
+  }
   .country-sort {
     width: 100%; background-color: #333; box-sizing: border-box; border: 1px solid #666; border-radius: 5px 5px 0 0; font-size: 1.4em; color: #999; margin: 0 0 10px;
+  }
+  #blackout {
+    width:100%;
+    height:100%;
+    position:absolute;
+    top:0;
+    left:0;
+    background-color: rgba(0,0,0,0.75);
+    transition: 1000ms;
+  }
+  .modal {
+    background-color: #EEE;
+    margin: 10% auto;
+    padding: 20px;
+    border-radius : 10px;
+    height: 200px;
+    width: 600px;
+    color: #111;
+  }
+  .modal img {
+    vertical-align: middle;
   }
   </style>
   <script>
@@ -72,11 +98,18 @@ line-height: 10px;}
             d.resolve(data);
           });
           return d.promise;
+        },
+        getSpotify: function(artist){
+          var d = $q.defer();
+          $http.get('spotify/'+artist).then(function(data){
+            d.resolve(data);
+          });
+          return d.promise;
         }
       }
     })
 
-    app.controller('LehtoControl', function( $scope, CountryService, ArtistService ){
+    app.controller('LehtoControl', function( $scope, $sce, CountryService, ArtistService ){
       CountryService.getCountries().then( function(data) {
         $scope.countries = _.sortBy(data.data, ['population'] ).reverse();
         $scope.origCountries = $scope.countries;
@@ -91,6 +124,7 @@ line-height: 10px;}
       }
 
       $scope.findEvents = function(artist){
+        $scope.selectedArtist = artist;
         ArtistService.getShows(artist).then( function(data){
           $scope.shows = data.data;
         })
@@ -115,34 +149,60 @@ line-height: 10px;}
       $scope.sortArtists = function(){
         if ($scope.artistValue.length > 0){
           $scope.artists = _.filter( $scope.origArtists, function(c){
-            return (c.name.indexOf( $scope.artistValue ) > -1)
+            return (c.indexOf( $scope.artistValue ) > -1)
           });
         } else {
           $scope.artists = $scope.origArtists;
         }
       }
+      $scope.confirmBuy = function(s){
+        $scope.selectedShow = s;
+      }
+
+      $scope.getSpotify = function(artist){
+        ArtistService.getSpotify(artist).then( function(data) {
+          console.log(data.data);
+          $scope.spotUrl = $sce.trustAsResourceUrl("https://embed.spotify.com/?uri=" + data.data);
+        })
+      }
+
+      $scope.handleSimiliarClick = function(artist){
+        $scope.findEvents(artist);
+        $scope.getSimiliar(artist);
+        $scope.artists = [artist];
+        $scope.getSpotify(artist)
+      }
     });
   </script>
 </head>
 <body ng-controller="LehtoControl">
+  <div id="blackout" ng-show="selectedShow" ng-click="selectedShow = null">
+    <div class="modal">
+      <h3>Whom will be the negotiator for selling your soul?</h3>
+      <h5>Experience {{ selectedArtist }} at {{selectedShow.city}} on {{ selectedShow.date }}</h5>
+      <img src="img/ticketmaster.png"><img src="img/stubhub.png"><img src="img/eventbrite.png">
+    </div>
+  </div>
   <nav>
     <h1>Lehto</h1>
     <h4>Regional musical artist event discoverizer</h4>
   </nav>
-  <div class="col">
+  <div class="col" ng-show="countries">
     <input class="country-sort" ng-model="countryValue" ng-change="sortCountries()" placeholder="Search...">
     <div ng-repeat="c in countries" ng-click="findArtists(c.cca2); highlight = true;" ng-class="{highlight: highlight}">{{ c.name }}</div>
   </div>
-  <div class="col">
-    <input class="country-sort" ng-model="artistValue" ng-change="sortArtists()" placeholder="Search...">
-    <div ng-repeat="a in artists" ng-click="findEvents(a);getSimiliar(a);highlight = true" ng-class="{highlight: highlight}">{{ a }}</div>
+  <div class="col" ng-show="artists">
+    <input class="country-sort" ng-show="artists.length > 1" ng-model="artistValue" ng-change="sortArtists()" placeholder="Search...">
+    <div ng-repeat="a in artists" ng-click="findEvents(a);getSpotify(a);getSimiliar(a);highlight = true" ng-class="{highlight: highlight}">{{ a }}</div>
+    <iframe src="{{spotUrl}}" frameborder="0" style="margin-top:10px" width="480" height="100" allowtransparency="true"></iframe>
     <div ng-show="similiar">
       <div class="title">Similiar Artists</div>
-      <div ng-repeat="a in similiar" ng-click="findEvents(a);highlight = true" ng-class="{highlight: highlight}">{{ a }}</div>
+      <div ng-repeat="a in similiar" ng-click="handleSimiliarClick(a);highlight = true" ng-class="{highlight: highlight}">{{ a }}</div>
     </div>
   </div>
-  <div class="col">
-    <div ng-repeat="s in shows">
+  <div class="col" ng-show="shows">
+    <h3>{{ selectedArtist }} Is Playing</h3>
+    <div ng-repeat="s in shows" ng-click="confirmBuy(s);">
       {{s.city}}, {{s.country}}
       <span style="float:right;font-size:0.8em;color:#666">{{s.date}}</span>
     </div>

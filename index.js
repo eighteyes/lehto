@@ -12,14 +12,14 @@ app.get('/country/:country', function(req, res) {
   console.log('Country', req.param('country'));
   getArtists(req.param('country'), function(data) {
     res.send(data);
-  })
+  });
 });
 
 app.get('/similiar/:artist', function(req, res) {
   console.log('Artist', req.param('artist'));
   getSimiliar(req.param('artist'), function(data) {
     res.send(data);
-  })
+  });
 });
 
 app.get('/shows/:artists', function(req, res) {
@@ -29,12 +29,18 @@ app.get('/shows/:artists', function(req, res) {
   });
 });
 
+app.get('/spotify/:artist', function(req, res) {
+  console.log('Spot: Artist', req.param('artist'));
+  getSpotify(req.param('artist'), function(data) {
+    res.send(data);
+  });
+});
+
 app.listen(80);
 
 function getArtists(countryCode, cb) {
   var artists = [];
-  request.get('http://musicbrainz.org/ws/2/release/?limit=100&query=country:'
-   + countryCode.toUpperCase(), function(error, resp, data) {
+  request.get('http://musicbrainz.org/ws/2/release/?limit=100&query=country:' + countryCode.toUpperCase(), function(error, resp, data) {
     to_json(data, function(err, xmldata) {
       var releases = xmldata.metadata['release-list'].release;
       for (var i in releases) {
@@ -46,7 +52,7 @@ function getArtists(countryCode, cb) {
         }
         artists.push(artist);
       }
-      cb( _.uniq(artists));
+      cb(_.uniq(artists));
     });
   });
 }
@@ -54,8 +60,7 @@ function getArtists(countryCode, cb) {
 
 function getSimiliar(artistName, cb) {
   var artists = [];
-  var url = encodeURI('http://prod.v2.api.musicgraph.com/api/v2/artist/search?similar_to='
-   + artistName + '&limit=100&fields=id,name&api_key=3ec87654df736909612bd3efd45a23f8');
+  var url = encodeURI('http://prod.v2.api.musicgraph.com/api/v2/artist/search?similar_to=' + artistName + '&limit=100&fields=id,name&api_key=3ec87654df736909612bd3efd45a23f8');
   request.get(url,
     function(error, resp, data) {
       data = JSON.parse(data);
@@ -64,26 +69,36 @@ function getSimiliar(artistName, cb) {
         artists.push(tArtist.name);
       }
       console.log(artists);
-      cb( _.uniq(artists));
+      cb(_.uniq(artists));
 
     })
 }
 
-function getShows(artistList, cb){
+function getSpotify(artistName, cb) {
+  var url = "https://ws.spotify.com/search/1/artist.json?q=" + artistName;
+
+  request.get(url,
+    function(error, resp, data) {
+      data = JSON.parse(data);
+      console.log(data);
+      cb(data.artists[0].href);
+    })
+}
+
+function getShows(artistList, cb) {
   var shows = [];
-  var url = encodeURI('http://api.eventful.com/json/events/search?q=music&app_key=rwXzGxDHc5cLRtT2&keywords='
-   + artistList);
+  var url = encodeURI('http://api.eventful.com/json/events/search?q=music&app_key=rwXzGxDHc5cLRtT2&keywords=' + artistList);
   request.get(url, function(err, resp, data) {
     data = JSON.parse(data);
     if (typeof data !== 'undefined' && data.hasOwnProperty('events') && data.events !== null) {
       for (var i in data.events.event) {
         var ev = data.events.event[i];
         console.log(ev);
-        if ( typeof ev !== 'undefined' && ev !== null ){
+        if (typeof ev !== 'undefined' && ev !== null) {
           shows.push({
             city: ev.city_name,
             country: ev.country_name,
-            latlon: [ ev.latitude, ev.longitude ],
+            latlon: [ev.latitude, ev.longitude],
             date: ev.start_time.substr(0, 10)
           });
         }
